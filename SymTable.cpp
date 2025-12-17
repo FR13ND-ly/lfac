@@ -1,61 +1,53 @@
 #include "SymTable.h"
-using namespace std;
 
-void SymTable::addVar(string* type, string*name) {
-    IdInfo var(type, name);
-    ids[*name] = var; 
+/* --- ADD THIS LINE --- */
+int errorCount = 0; 
+
+SymTable::SymTable(string tableName, SymTable* parent) 
+    : parent(parent), name(tableName) {}
+
+SymTable* SymTable::getParent() {
+    return parent;
 }
 
-bool SymTable::existsId(string* s) {
-    if(ids.find(*s) != ids.end()) return true;
+string SymTable::getName() {
+    return name;
+}
+
+void SymTable::addVar(string type, string name) {
+    IdInfo var(type, name, "var");
+    ids[name] = var; 
+}
+
+void SymTable::addFunc(string type, string name) {
+    IdInfo func(type, name, "func");
+    ids[name] = func; 
+}
+
+void SymTable::addClass(string name) {
+    IdInfo cls("class", name, "class");
+    ids[name] = cls;
+}
+
+bool SymTable::existsId(string s) {
+    if(ids.find(s) != ids.end()) return true;
     if(parent) return parent->existsId(s);
     return false;
 }
 
+bool SymTable::existsIdCurrentScope(string s) {
+    return ids.find(s) != ids.end();
+}
 
 void SymTable::printVars() {
-    for (const pair<string, IdInfo>& v : ids) {
-        cout << "name: " << v.first << " type:" << v.second.type << endl; 
-     }
-}
-
-void SymTable::setValue(string* name, int val) {
-    auto it = ids.find(*name);
-    if(it != ids.end() && it->second.type == "int") {
-        it->second.intValue = val;
+    cout << "Scope: " << name << endl;
+    for (const auto& v : ids) {
+        cout << "  Name: " << v.first << " | Type: " << v.second.type 
+             << " | Cat: " << v.second.category << endl;
     }
+    cout << "----------------" << endl;
 }
-
-void SymTable::setValue(string* name, float val) {
-    auto it = ids.find(*name);
-    if(it != ids.end() && it->second.type == "float")
-        it->second.floatValue = val;
-}
-
-void SymTable::setValue(string* name, bool val) {
-    auto it = ids.find(*name);
-    if(it != ids.end() && it->second.type == "bool")
-        it->second.boolValue = val;
-}
-
-void SymTable::setValue(string* name, string val) {
-    auto it = ids.find(*name);
-    if(it != ids.end() && it->second.type == "string")
-        it->second.strValue = val;
-}
-
 
 SymTable::~SymTable() {
     ids.clear();
 }
-
-
-
-
-
-
-
-
-
-
-

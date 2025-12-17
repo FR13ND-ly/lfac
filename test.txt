@@ -1,0 +1,35 @@
+int globalVar;
+MyClass obj;
+
+class MyClass {
+    int id;
+    float value;
+    
+    void setVal(int x) {
+        id = x;
+    }
+}
+
+int compute(int a, int b) {
+    int result; 
+    result = a + b;
+    
+    if (result > 10) {
+        result = result + 1;
+    }
+    
+    return result;
+}
+
+main {
+    globalVar = 10;
+    
+    Print(globalVar);
+    
+    if (globalVar == 10) {
+        Print("Global is 10");
+    }
+    
+    obj = new MyClass();
+    obj.setVal(5);
+}

@@ -1,44 +1,42 @@
+#pragma once
 #include <iostream>
 #include <map>
 #include <string>
+#include <vector>
 
 using namespace std;
 
 class IdInfo {
-    public:
+public:
     string type;
     string name;
-    int intValue;
-    float floatValue;
-    bool boolValue;
-    string strValue;
-   
-    IdInfo() : intValue(0), floatValue(0.0), boolValue(false), strValue("") {}
-    IdInfo(string* type, string* name) : type(*type), name(*name) {}
-    
+    string category; 
+
+    IdInfo() {}
+    IdInfo(string type, string name, string category = "var") 
+        : type(type), name(name), category(category) {}
 };
 
 class SymTable {
     SymTable* parent;
     map<string, IdInfo> ids;
     string name;
-    public:
-    SymTable(const char* tableName, SymTable* parent = NULL) 
-    : name(tableName), parent(parent) {}
-    bool existsId(string* s);
-    void addVar(string* type, string* name );
-    void setValue(string* name, int value);
-    void setValue(string* name, float value);
-    void setValue(string* name, bool value);
-    void setValue(string* name, string value);
 
-
+public:
+    SymTable(string tableName, SymTable* parent = NULL);
+    
+    bool existsId(string s);
+    bool existsIdCurrentScope(string s);
+    
+    void addVar(string type, string name);
+    void addFunc(string type, string name);
+    void addClass(string name);
+    
+    SymTable* getParent();
+    string getName();
     void printVars();
     ~SymTable();
 };
 
-
-
-
-
-
+/* --- ADD THIS LINE --- */
+extern int errorCount;
