@@ -1,0 +1,28 @@
+let globalVar : int = 100;
+let pi : float = 3.14;
+
+class Point {
+let x : int;
+let y : int;
+
+function setX(val : int) : void {
+    let temp : int = val;
+}
+
+
+}
+
+
+main {
+
+Print(globalVar);
+
+globalVar = globalVar + 50;
+
+Print(globalVar);
+
+if (globalVar > 100) {
+    Print("Variable is big");
+}
+
+}
