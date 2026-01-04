@@ -8,7 +8,7 @@
 %option noyywrap
 %option yylineno
 
-%%
+%%\
 
 "let"           { return LET; }
 "class"         { return CLASS; }
@@ -17,8 +17,8 @@
 "if"            { return IF; }
 "else"          { return ELSE; }
 "while"         { return WHILE; }
-"return"        { return RETURN; }
 "Print"         { return PRINT; }
+"new"           { return NEW; }
 
 "int"           { yylval.dataType = TYPE_INT; return T_INT; }
 "float"         { yylval.dataType = TYPE_FLOAT; return T_FLOAT; }
@@ -38,18 +38,31 @@
     return STRING_VAL; 
 }
 
-[a-zA-Z_][a-zA-Z0-9_]* { 
+[a-zA-Z][a-zA-Z0-9]* { 
     yylval.strVal = new string(yytext); 
     return ID; 
 }
 
-":"             { return COLON; }
 "=="            { return EQ; }
-"&&"            { return AND; }
-"||"            { return OR; }
+"="             { return ASSIGN; }
+"+"             { return '+'; }
+"-"             { return '-'; }
+"*"             { return '*'; }
+"/"             { return '/'; }
+">"             { return '>'; }
+"<"             { return '<'; }
+
+"("             { return '('; }
+")"             { return ')'; }
+"{"             { return '{'; }
+"}"             { return '}'; }
+";"             { return ';'; }
+":"             { return ':'; }
+","             { return ','; }
 "."             { return '.'; }
 
-[ \t\r\n]       ; /* Ignorăm whitespace */
-.               { return yytext[0]; }
+[ \t\n]         ; 
+
+.               { printf("Lexical error: %s\n", yytext); }
 
 %%

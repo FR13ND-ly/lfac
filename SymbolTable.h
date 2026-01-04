@@ -9,50 +9,58 @@
 
 using namespace std;
 
-// Tipuri de date acceptate
 enum DataType { TYPE_INT, TYPE_FLOAT, TYPE_STRING, TYPE_BOOL, TYPE_VOID, TYPE_CLASS, TYPE_UNKNOWN };
 
-// Wrapper pentru valorile de la runtime
+inline string getTypeString(DataType t) {
+    switch(t) {
+        case TYPE_INT: return "int";
+        case TYPE_FLOAT: return "float";
+        case TYPE_STRING: return "string";
+        case TYPE_BOOL: return "bool";
+        case TYPE_VOID: return "void";
+        case TYPE_CLASS: return "class";
+        default: return "unknown";
+    }
+}
+
 struct ValueWrapper {
     DataType type;
     int iVal = 0;
     float fVal = 0.0;
     string sVal = "";
     bool bVal = false;
+    
+    map<string, ValueWrapper> instanceMembers; 
+
     ValueWrapper() : type(TYPE_UNKNOWN) {}
 };
 
-// Informații despre un simbol
 struct SymbolInfo {
     string name;
-    string kind; // "variable", "function", "class", "parameter", "field"
+    string kind;
     DataType type;
-    string className; // Numele clasei dacă simbolul este un obiect
+    string className;
+    
+    vector<DataType> paramTypes;
+    
+    map<string, DataType> classMembers;
+
     ValueWrapper runtimeValue;
     
-    // Pentru funcții: semnătura parametrilor
-    vector<DataType> parameterTypes;
-    
-    // Pentru clase: membrii (fields) cu tipul lor
-    map<string, DataType> members;
+    map<string, ValueWrapper> instanceMembers;
 
     SymbolInfo(string n, string k, DataType t) : name(n), kind(k), type(t) {
         runtimeValue.type = t;
     }
 };
 
-// Clasa pentru Tabela de Simboluri
 class SymbolTable {
 public:
     string scopeName;
     SymbolTable* parent;
     map<string, SymbolInfo*> symbols;
 
-    SymbolTable(string name, SymbolTable* p = nullptr) : scopeName(name), parent(p) {}
-
-    ~SymbolTable() {
-        for (auto const& [key, val] : symbols) delete val;
-    }
+    SymbolTable(string name, SymbolTable* p = NULL) : scopeName(name), parent(p) {}
 
     bool add(SymbolInfo* s) {
         if (symbols.count(s->name)) return false;
@@ -63,23 +71,34 @@ public:
     SymbolInfo* lookup(string name) {
         if (symbols.count(name)) return symbols[name];
         if (parent) return parent->lookup(name);
-        return nullptr;
+        return NULL;
     }
 
-    void printTable(ofstream& file, int level = 0) {
-        string indent(level * 4, ' ');
-        file << indent << "--- SCOPE: " << scopeName << " ---\n";
-        for (auto const& [name, sym] : symbols) {
-            file << indent << "  [" << sym->kind << "] " << name << " : type " << sym->type;
-            if (sym->kind == "function") {
-                file << " (Params: " << sym->parameterTypes.size() << ")";
+    void printTable(ofstream& file) {
+        file << "Scope: " << scopeName;
+        if (parent) file << "  (Parent: " << parent->scopeName << ")";
+        
+        for (auto const& entry : symbols) {
+            SymbolInfo* val = entry.second;
+            file << "Name: " << val->name << " | Kind: " << val->kind << " | Type: " << getTypeString(val->type);
+            
+            if (val->kind == "function") {
+                file << " | Params: (";
+                for(auto t : val->paramTypes) file << getTypeString(t) << ", ";
+                file << ")";
             }
-            if (sym->kind == "class") {
-                file << " (Members: " << sym->members.size() << ")";
+            if (val->kind == "class") {
+                file << " | Fields: " << val->classMembers.size();
             }
-            file << "\n";
+            file << endl;
         }
-        file << "\n";
+        file << endl;
+    }
+
+    ~SymbolTable() {
+        for (auto const& entry : symbols) {
+            delete entry.second;
+        }
     }
 };
 

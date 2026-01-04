@@ -2,10 +2,12 @@
 #define AST_H
 
 #include "SymbolTable.h"
-#include <vector>
 #include <iostream>
+#include <string>
+#include <vector>
 
-// Clasa de bază pentru nodurile AST
+using namespace std;
+
 class ASTNode {
 public:
     DataType nodeType;
@@ -13,7 +15,6 @@ public:
     virtual ValueWrapper eval() = 0; 
 };
 
-// Nod pentru literale (constante)
 class LiteralNode : public ASTNode {
     ValueWrapper val;
 public:
@@ -21,133 +22,200 @@ public:
     LiteralNode(float v) { val.type = TYPE_FLOAT; val.fVal = v; nodeType = TYPE_FLOAT; }
     LiteralNode(string v) { val.type = TYPE_STRING; val.sVal = v; nodeType = TYPE_STRING; }
     LiteralNode(bool v) { val.type = TYPE_BOOL; val.bVal = v; nodeType = TYPE_BOOL; }
-    
     ValueWrapper eval() override { return val; }
 };
 
-// Nod pentru identificatori (variabile simple)
 class IdNode : public ASTNode {
     string name;
-    SymbolTable* currentScope;
+    SymbolTable* scope;
 public:
-    IdNode(string n, SymbolTable* s) : name(n), currentScope(s) {
-        SymbolInfo* sym = s->lookup(name);
-        nodeType = sym ? sym->type : TYPE_UNKNOWN;
+    IdNode(string n, SymbolTable* s) : name(n), scope(s) {
+        SymbolInfo* sym = s->lookup(n);
+        if(sym) nodeType = sym->type;
+        else nodeType = TYPE_UNKNOWN;
     }
     ValueWrapper eval() override {
-        SymbolInfo* sym = currentScope->lookup(name);
+        SymbolInfo* sym = scope->lookup(name);
         if (sym) return sym->runtimeValue;
         return ValueWrapper();
     }
 };
 
-// Nod pentru acces membri clasă (obj.field)
 class MemberAccessNode : public ASTNode {
     string objName;
-    string memberName;
+    string fieldName;
     SymbolTable* scope;
 public:
-    MemberAccessNode(string obj, string mem, SymbolTable* s, DataType t) 
-        : objName(obj), memberName(mem), scope(s) { nodeType = t; }
-    
-    ValueWrapper eval() override {
-        // Într-o implementare completă, am căuta instanța specifică în memorie.
-        // Pentru această temă, returnăm o valoare default a tipului membrului,
-        // deoarece nu avem un heap manager complet implementat.
-        ValueWrapper v; 
-        v.type = nodeType;
-        return v;
+    MemberAccessNode(string obj, string field, SymbolTable* s, DataType realType) 
+        : objName(obj), fieldName(field), scope(s) {
+        nodeType = realType; 
     }
-};
 
-// Nod pentru apeluri de funcții
-class CallNode : public ASTNode {
-    string funcName;
-    vector<ASTNode*> args;
-public:
-    CallNode(string name, vector<ASTNode*> a, DataType retType) 
-        : funcName(name), args(a) { nodeType = retType; }
-    
     ValueWrapper eval() override {
-        // Evaluăm argumentele (chiar dacă nu executăm corpul funcției complet aici)
-        for(auto arg : args) {
-            arg->eval();
+        SymbolInfo* obj = scope->lookup(objName);
+        if (obj && obj->instanceMembers.count(fieldName)) {
+            return obj->instanceMembers[fieldName];
         }
-        // Returnăm o valoare default pentru tipul returnat
-        ValueWrapper v; 
-        v.type = nodeType;
-        return v;
+        return ValueWrapper();
     }
 };
 
-// Nod pentru operații binare (+, *, ==, etc)
 class BinaryNode : public ASTNode {
     ASTNode *left, *right;
-    string op;
+    string op; 
 public:
     BinaryNode(ASTNode* l, string o, ASTNode* r) : left(l), op(o), right(r) {
-        if (op == "==" || op == "<" || op == ">" || op == "&&" || op == "||") nodeType = TYPE_BOOL;
-        else nodeType = l->nodeType; 
+        if (op == ">" || op == "<" || op == "==") {
+            nodeType = TYPE_BOOL;
+        } else {
+            nodeType = l->nodeType; 
+        }
     }
+    ~BinaryNode() { delete left; delete right; }
+
     ValueWrapper eval() override {
-        ValueWrapper lv = left->eval();
-        ValueWrapper rv = right->eval();
-        ValueWrapper res; res.type = nodeType;
+        ValueWrapper l = left->eval();
+        ValueWrapper r = right->eval();
+        ValueWrapper res;
         
-        if (op == "+") {
-            if (lv.type == TYPE_INT) res.iVal = lv.iVal + rv.iVal;
-            else if (lv.type == TYPE_FLOAT) res.fVal = lv.fVal + rv.fVal;
-        } else if (op == "*") {
-            if (lv.type == TYPE_INT) res.iVal = lv.iVal * rv.iVal;
-        } else if (op == "==") {
-            if (lv.type == TYPE_INT) res.bVal = (lv.iVal == rv.iVal);
-            else if (lv.type == TYPE_BOOL) res.bVal = (lv.bVal == rv.bVal);
-        } else if (op == ">") {
-             if (lv.type == TYPE_INT) res.bVal = (lv.iVal > rv.iVal);
-             else if (lv.type == TYPE_FLOAT) res.bVal = (lv.fVal > rv.fVal);
+        if (l.type != r.type) return res;
+
+        res.type = nodeType;
+
+        if (l.type == TYPE_INT) {
+            if (op == "+") res.iVal = l.iVal + r.iVal;
+            else if (op == "-") res.iVal = l.iVal - r.iVal;
+            else if (op == "*") res.iVal = l.iVal * r.iVal;
+            else if (op == "/") res.iVal = l.iVal / r.iVal;
+            else if (op == ">") res.bVal = l.iVal > r.iVal;
+            else if (op == "<") res.bVal = l.iVal < r.iVal;
+            else if (op == "==") res.bVal = l.iVal == r.iVal;
+        }
+        else if (l.type == TYPE_FLOAT) {
+             if (op == "+") res.fVal = l.fVal + r.fVal;
+             else if (op == "-") res.fVal = l.fVal - r.fVal;
+             else if (op == "*") res.fVal = l.fVal * r.fVal;
+             else if (op == "/") res.fVal = l.fVal / r.fVal;
+             else if (op == ">") res.bVal = l.fVal > r.fVal;
+             else if (op == "<") res.bVal = l.fVal < r.fVal;
+             else if (op == "==") res.bVal = l.fVal == r.fVal;
+        }
+        else if (l.type == TYPE_STRING && op == "+") {
+            res.sVal = l.sVal + r.sVal;
         }
         return res;
     }
 };
 
-// Nod pentru asignări (ID = expr sau ID.field = expr)
+class NewNode : public ASTNode {
+    string className;
+    SymbolTable* globalScope;
+public:
+    NewNode(string cls, SymbolTable* gs) : className(cls), globalScope(gs) {
+        nodeType = TYPE_CLASS;
+    }
+    ValueWrapper eval() override {
+        ValueWrapper v;
+        v.type = TYPE_CLASS;
+        v.sVal = className; 
+        
+        SymbolInfo* clsDef = globalScope->lookup(className);
+        if(clsDef){
+            for(auto const& entry : clsDef->classMembers){
+                ValueWrapper defVal; 
+                defVal.type = entry.second;
+                v.instanceMembers[entry.first] = defVal;
+            }
+        }
+        return v;
+    }
+};
+
 class AssignNode : public ASTNode {
-    string idName;
-    string memberName; // gol dacă e variabilă simplă
+    string name;
+    string memberName; 
     bool isMemberAccess;
     SymbolTable* scope;
-    ASTNode* expression;
+    ASTNode* expr;
 public:
-    // Constructor variabilă simplă
-    AssignNode(string name, SymbolTable* s, ASTNode* e) 
-        : idName(name), memberName(""), isMemberAccess(false), scope(s), expression(e) {
+    AssignNode(string n, SymbolTable* s, ASTNode* e) 
+        : name(n), memberName(""), isMemberAccess(false), scope(s), expr(e) {
         nodeType = e->nodeType;
     }
 
+    AssignNode(string n, string m, SymbolTable* s, ASTNode* e)
+        : name(n), memberName(m), isMemberAccess(true), scope(s), expr(e) {
+        nodeType = e->nodeType;
+    }
+
+    ~AssignNode() { delete expr; }
+
     ValueWrapper eval() override {
-        ValueWrapper val = expression->eval();
-        if (!isMemberAccess) {
-            SymbolInfo* sym = scope->lookup(idName);
-            if (sym) sym->runtimeValue = val; 
+        ValueWrapper val = expr->eval();
+        SymbolInfo* sym = scope->lookup(name);
+
+        if (sym) {
+            if (!isMemberAccess) {
+                sym->runtimeValue = val;
+                if (val.type == TYPE_CLASS) {
+                    sym->className = val.sVal;
+                    sym->instanceMembers = val.instanceMembers;
+                }
+            } else {
+                sym->instanceMembers[memberName] = val;
+            }
         }
         return val;
     }
 };
 
-// Nod pentru funcția predefinită Print
 class PrintNode : public ASTNode {
-    ASTNode* expression;
+    ASTNode* expr;
 public:
-    PrintNode(ASTNode* e) : expression(e) { nodeType = TYPE_VOID; }
+    PrintNode(ASTNode* e) : expr(e) { nodeType = TYPE_VOID; }
+    ~PrintNode() { delete expr; }
+    
     ValueWrapper eval() override {
-        ValueWrapper v = expression->eval();
-        std::cout << "[PROGRAM OUTPUT]: ";
-        if (v.type == TYPE_INT) std::cout << v.iVal;
-        else if (v.type == TYPE_FLOAT) std::cout << v.fVal;
-        else if (v.type == TYPE_STRING) std::cout << v.sVal;
-        else if (v.type == TYPE_BOOL) std::cout << (v.bVal ? "true" : "false");
-        std::cout << std::endl;
+        ValueWrapper v = expr->eval();
+        if (v.type == TYPE_INT) cout << "[PRINT]: " << v.iVal << endl;
+        else if (v.type == TYPE_FLOAT) cout << "[PRINT]: " << v.fVal << endl;
+        else if (v.type == TYPE_STRING) cout << "[PRINT]: " << v.sVal << endl;
+        else if (v.type == TYPE_BOOL) cout << "[PRINT]: " << (v.bVal ? "true" : "false") << endl;
+        else if (v.type == TYPE_CLASS) cout << "[PRINT]: Object<" << v.sVal << ">" << endl;
         return v;
+    }
+};
+
+class IfNode : public ASTNode {
+    ASTNode* cond;
+    vector<ASTNode*> body;
+public:
+    IfNode(ASTNode* c, vector<ASTNode*> b) : cond(c), body(b) { nodeType = TYPE_VOID; }
+    ~IfNode() { delete cond; for(auto n : body) delete n; }
+    
+    ValueWrapper eval() override {
+        ValueWrapper res = cond->eval();
+        if (res.bVal) {
+            for(auto n : body) n->eval();
+        }
+        return ValueWrapper();
+    }
+};
+
+class WhileNode : public ASTNode {
+    ASTNode* cond;
+    vector<ASTNode*> body;
+public:
+    WhileNode(ASTNode* c, vector<ASTNode*> b) : cond(c), body(b) { nodeType = TYPE_VOID; }
+    ~WhileNode() { delete cond; for(auto n : body) delete n; }
+
+    ValueWrapper eval() override {
+        while(true) {
+            ValueWrapper res = cond->eval();
+            if(!res.bVal) break;
+            for(auto n : body) n->eval();
+        }
+        return ValueWrapper();
     }
 };
 

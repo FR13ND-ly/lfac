@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Oprește scriptul imediat dacă o comandă eșuează
 set -e
 
-# Curățare fișiere vechi
 rm -f lex.yy.c parser.tab.c parser.tab.h compiler tables.txt
 
 echo "Pasul 1: Bison..."
