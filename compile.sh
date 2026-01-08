@@ -10,4 +10,4 @@ flex lexer.l
 
 g++ -std=c++17 lex.yy.c parser.tab.c -o compiler
 
-./compiler test.txt
+./compiler inputOk.txt

@@ -266,7 +266,6 @@ if_stmt: IF '(' expression ')' '{' statement_list '}' {
        }
        | IF '(' expression ')' '{' statement_list '}' ELSE '{' statement_list '}' {
            if ($3->nodeType != TYPE_BOOL) yyerror("IF condition must be boolean");
-           // Asigura-te ca in AST.h IfNode accepta 2 vectori (then, else)
            $$ = new IfNode($3, *$6, *$10); 
            delete $6; delete $10;
        }
