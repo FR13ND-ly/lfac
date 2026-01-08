@@ -1,0 +1,108 @@
+class A {
+    let x : int;
+    let y : int;
+    let z : float;
+
+    function A() : void {
+        self.x = 19; 
+        y = 90;
+    }
+
+    function g(z : int) : int {
+        return zzz * 100; 
+    }
+
+    function fl(x : int) : float {
+        if(x == 20) {
+            return 10.0;
+        }
+        return 20.0;
+    }
+}
+
+function f(z : int, x : float, b : bool) : int {
+    if (b == true && x > 1.0) {
+        return z * 10;
+    } 
+    return z;
+}
+
+class B {
+    let b : int;
+    let bb : int;
+
+    function B() : void {
+        self.b = 5;
+        self.bb = 10; 
+    }
+
+    function g(z : int) : int {
+        return z + b;
+    }
+
+    function f(z : int) : int {
+        if(z > 4) {
+            let var : int;
+            var = 0;
+            return var + 5;
+        }
+        return b + bb * z;
+    }
+}
+
+function bfunc(b : bool, s : string) : string {
+    if( b == true ) {
+        return s; 
+    }
+    else return "bau";
+}
+
+let fx : float;
+let x : int;
+let z : int;
+let s : string;
+let ix : int;
+let ix : int; 
+let b1 : bool;
+let b2 : bool;
+let obb : B; 
+let oba : A; 
+
+main {
+    zzz = 10;
+
+    fx = 65.0;
+    ix = 10;
+
+    Print(fx - 65.0 + f(10, 10.0, true));
+
+    fx = fx * 10 + f(10, 10.0, true) + ix; 
+
+    s = "test";
+    b1 = true;
+    b2 = b1;
+
+    Print(s + b1);
+
+    b1 = b1 + b2;
+
+    fx = b1 || b2;
+
+    oba = new A();
+    obb = new B();
+
+    oba.x = oba.b + bfunc(b1, s);
+
+    oba.x = obb.b + fx;
+
+    Print(f(ix, fx, fx));
+    Print(f(ix, fx, true, true));
+
+    oba.f(ix);
+
+    oba.g(fx);
+
+    oba.zzz = 100;
+
+    oba.x = oba.x + oba.fl(ix);
+}

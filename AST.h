@@ -60,12 +60,30 @@ public:
     }
 };
 
+class UnaryNode : public ASTNode {
+    ASTNode* expr;
+    string op;
+public:
+    UnaryNode(string o, ASTNode* e) : op(o), expr(e) {
+        nodeType = e->nodeType;
+    }
+    ~UnaryNode() { delete expr; }
+
+    ValueWrapper eval() override {
+        ValueWrapper v = expr->eval();
+        if (op == "!" && v.type == TYPE_BOOL) {
+            v.bVal = !v.bVal;
+        }
+        return v;
+    }
+};
+
 class BinaryNode : public ASTNode {
     ASTNode *left, *right;
     string op; 
 public:
     BinaryNode(ASTNode* l, string o, ASTNode* r) : left(l), op(o), right(r) {
-        if (op == ">" || op == "<" || op == "==") {
+        if (op == ">" || op == "<" || op == "==" || op == "&&" || op == "||") {
             nodeType = TYPE_BOOL;
         } else {
             nodeType = l->nodeType; 
@@ -99,6 +117,11 @@ public:
              else if (op == ">") res.bVal = l.fVal > r.fVal;
              else if (op == "<") res.bVal = l.fVal < r.fVal;
              else if (op == "==") res.bVal = l.fVal == r.fVal;
+        }
+        else if (l.type == TYPE_BOOL) {
+            if (op == "&&") res.bVal = l.bVal && r.bVal;
+            else if (op == "||") res.bVal = l.bVal || r.bVal;
+            else if (op == "==") res.bVal = (l.bVal == r.bVal);
         }
         else if (l.type == TYPE_STRING && op == "+") {
             res.sVal = l.sVal + r.sVal;
@@ -143,7 +166,7 @@ public:
         nodeType = e->nodeType;
     }
 
-    AssignNode(string n, string m, SymbolTable* s, ASTNode* e)
+    AssignNode(string n, string m, SymbolTable* s, ASTNode* e) 
         : name(n), memberName(m), isMemberAccess(true), scope(s), expr(e) {
         nodeType = e->nodeType;
     }
@@ -188,15 +211,24 @@ public:
 
 class IfNode : public ASTNode {
     ASTNode* cond;
-    vector<ASTNode*> body;
+    vector<ASTNode*> thenBody;
+    vector<ASTNode*> elseBody;
 public:
-    IfNode(ASTNode* c, vector<ASTNode*> b) : cond(c), body(b) { nodeType = TYPE_VOID; }
-    ~IfNode() { delete cond; for(auto n : body) delete n; }
+    IfNode(ASTNode* c, vector<ASTNode*> t, vector<ASTNode*> e = {}) 
+        : cond(c), thenBody(t), elseBody(e) { nodeType = TYPE_VOID; }
+    
+    ~IfNode() { 
+        delete cond; 
+        for(auto n : thenBody) delete n; 
+        for(auto n : elseBody) delete n; 
+    }
     
     ValueWrapper eval() override {
         ValueWrapper res = cond->eval();
         if (res.bVal) {
-            for(auto n : body) n->eval();
+            for(auto n : thenBody) if(n) n->eval();
+        } else {
+            for(auto n : elseBody) if(n) n->eval();
         }
         return ValueWrapper();
     }
@@ -214,6 +246,101 @@ public:
             ValueWrapper res = cond->eval();
             if(!res.bVal) break;
             for(auto n : body) n->eval();
+        }
+        return ValueWrapper();
+    }
+};
+
+class ReturnNode : public ASTNode {
+    ASTNode* expr;
+public:
+    ReturnNode(ASTNode* e) : expr(e) { 
+        nodeType = e->nodeType; 
+    }
+    ~ReturnNode() { delete expr; }
+
+    ValueWrapper eval() override {
+        ValueWrapper v = expr->eval();
+        throw v; 
+    }
+};
+
+class FunctionCallNode : public ASTNode {
+    string funcName;
+    vector<ASTNode*> args;
+    SymbolTable* currentScope;
+    DataType retType;
+public:
+    FunctionCallNode(string name, vector<ASTNode*> a, SymbolTable* s, DataType rt) 
+        : funcName(name), args(a), currentScope(s), retType(rt) {
+        nodeType = retType;
+    }
+
+    ValueWrapper eval() override {
+        SymbolTable* global = currentScope;
+        while(global->parent != NULL) global = global->parent;
+        SymbolInfo* funcSym = global->lookup(funcName);
+
+        if (!funcSym) return ValueWrapper();
+
+        vector<ValueWrapper> argVals;
+        for(auto arg : args) argVals.push_back(arg->eval());
+
+        SymbolTable* targetScope = funcSym->funcScopeRef;
+        if(targetScope) {
+            for(size_t i=0; i<funcSym->paramNames.size(); i++) {
+                string pName = funcSym->paramNames[i];
+                SymbolInfo* paramSym = targetScope->lookup(pName);
+                if(paramSym) {
+                    paramSym->runtimeValue = argVals[i];
+                }
+            }
+        }
+
+        try {
+            for(ASTNode* node : funcSym->funcBody) {
+                if(node) node->eval();
+            }
+        } catch (ValueWrapper retVal) {
+            return retVal;
+        }
+
+        return ValueWrapper();
+    }
+};
+
+class RealMethodCallNode : public ASTNode {
+    string objName;
+    vector<ASTNode*> args;
+    SymbolInfo* methodInfo; 
+    SymbolTable* currentScope;
+public:
+    RealMethodCallNode(string on, vector<ASTNode*> a, SymbolInfo* minfo, SymbolTable* scope)
+        : objName(on), args(a), methodInfo(minfo), currentScope(scope) {
+        nodeType = minfo->type;
+    }
+
+    ValueWrapper eval() override {
+        vector<ValueWrapper> argVals;
+        for(auto arg : args) argVals.push_back(arg->eval());
+
+        SymbolTable* targetScope = methodInfo->funcScopeRef;
+        if(targetScope) {
+            for(size_t i=0; i<methodInfo->paramNames.size(); i++) {
+                string pName = methodInfo->paramNames[i];
+                SymbolInfo* paramSym = targetScope->lookup(pName);
+                if(paramSym) {
+                    paramSym->runtimeValue = argVals[i];
+                }
+            }
+        }
+
+        try {
+            for(ASTNode* node : methodInfo->funcBody) {
+                if(node) node->eval();
+            }
+        } catch (ValueWrapper retVal) {
+            return retVal;
         }
         return ValueWrapper();
     }

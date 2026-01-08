@@ -1,0 +1,114 @@
+class A {
+    let x : int;
+    let y : int;
+
+    function init() : void {
+        x = 19;
+        y = 90;
+    }
+
+    function g(z : int) : int {
+        return z + 100;
+    }
+}
+
+function f(z : int) : int {
+    let x : int; 
+    let b : int;
+    let flag : bool;
+
+    x = 5; 
+    b = 10;
+    flag = false;
+
+    if(flag == true) {
+        return x + b;
+    }
+    return z * 10;
+}
+
+class B {
+    let b : int;
+    let bb : int;
+
+    function init() : void {
+        b = 5;
+        bb = 10;
+    }
+
+    function g(z : int) : int {
+        let a : A; 
+        let x : int;
+        
+        a = new A();
+        a.init(); 
+        x = 100;
+        
+        return x + a.x + z;
+    }
+    
+    function f(z : int) : int {
+        return 200 * z;
+    }
+}
+
+let fx : float;
+let s : string;
+let ix : int;
+let b1 : bool;
+let b2 : bool;
+let obb : B; 
+let oba : A;
+
+
+
+function bfunc(b : bool, s : string) : string {
+    if( b == true ) {
+        return s; 
+    }
+    return "bau";
+}
+
+main {
+    fx = 65.0;
+    fx = fx + 10.0 * fx - 65.0;
+    Print(fx);
+
+    s = "test";
+    Print(s);
+    
+    s = "otherstr";
+    Print(s);
+
+    oba = new A();
+    oba.init(); 
+
+    obb = new B();
+    obb.init();
+
+    ix = 10;
+
+    ix = ix + (ix + f(ix*4))*2 + oba.x * oba.y + obb.f(10) + obb.b * obb.bb;  
+    Print(ix);
+
+    oba.x = f(1000);
+    oba.y = f(100);
+    
+    b2 = true;
+    b1 = true; 
+    
+    Print(bfunc(b1, "s"));
+
+    if (ix + 5 > ix + 6) {
+        Print(true);
+    } else {
+        Print(false);
+    }
+
+    Print(b1 == false); 
+    Print(oba.x == oba.y);
+
+    if(ix + 2 > ix + 5) {
+         ix = 100;
+    }
+}

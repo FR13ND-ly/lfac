@@ -19,7 +19,6 @@
     string currentClassName = "";
     
     vector<pair<string, DataType>> tempParamsDef; 
-    vector<DataType> tempArgsCall;
 %}
 
 %code requires {
@@ -42,16 +41,19 @@
 %token <strVal> STRING_VAL ID
 %token <dataType> T_INT T_FLOAT T_STRING T_BOOL T_VOID
 
-%token LET CLASS FUNCTION MAIN IF ELSE WHILE PRINT NEW
-%token ASSIGN EQ 
+%token LET CLASS FUNCTION MAIN IF ELSE WHILE PRINT NEW RETURN
+%token ASSIGN EQ AND OR NOT
 
 %type <dataType> type
-%type <node> expression statement assign_stmt print_stmt if_stmt while_stmt call_stmt
-%type <nodeVec> statement_list
+%type <node> expression statement assign_stmt print_stmt if_stmt while_stmt call_expr return_stmt
+%type <nodeVec> statement_list arg_list args_exist func_body
 
+%left OR
+%left AND
 %left EQ '>' '<'
 %left '+' '-'
 %left '*' '/'
+%right NOT
 
 %%
 
@@ -107,6 +109,8 @@ class_def: CLASS ID {
                      cls->classMembers[entry.first] = entry.second->type;
                  }
              }
+             cls->funcScopeRef = currentScope; 
+
              if(currentScope->parent) currentScope = currentScope->parent;
              currentClassName = "";
              delete $2;
@@ -129,11 +133,15 @@ field_decl: LET ID ':' type ';' {
 func_def: FUNCTION ID { tempParamsDef.clear(); } '(' param_list ')' ':' type {
              SymbolInfo* s = new SymbolInfo(*$2, "function", $8);
              
-             for(auto p : tempParamsDef) s->paramTypes.push_back(p.second);
+             for(auto p : tempParamsDef) {
+                 s->paramTypes.push_back(p.second);
+                 s->paramNames.push_back(p.first);
+             }
              currentScope->add(s);
              
              SymbolTable* funcScope = new SymbolTable("Func_" + *$2, currentScope);
              allScopes.push_back(funcScope);
+             s->funcScopeRef = funcScope; 
              currentScope = funcScope;
 
              for(auto p : tempParamsDef) {
@@ -142,18 +150,27 @@ func_def: FUNCTION ID { tempParamsDef.clear(); } '(' param_list ')' ':' type {
              }
 
           } '{' func_body '}' {
+             SymbolInfo* funcSym = currentScope->parent->lookup(*$2);
+             if (funcSym) {
+                 funcSym->funcBody = *$11; 
+             }
              if(currentScope->parent) currentScope = currentScope->parent;
              delete $2;
+             delete $11;
           }
         ;
 
 method_def: FUNCTION ID { tempParamsDef.clear(); } '(' param_list ')' ':' type {
              SymbolInfo* s = new SymbolInfo(*$2, "function", $8);
-             for(auto p : tempParamsDef) s->paramTypes.push_back(p.second);
+             for(auto p : tempParamsDef) {
+                 s->paramTypes.push_back(p.second);
+                 s->paramNames.push_back(p.first);
+             }
              currentScope->add(s);
              
              SymbolTable* funcScope = new SymbolTable("Method_" + *$2, currentScope);
              allScopes.push_back(funcScope);
+             s->funcScopeRef = funcScope;
              currentScope = funcScope;
 
              for(auto p : tempParamsDef) {
@@ -161,8 +178,13 @@ method_def: FUNCTION ID { tempParamsDef.clear(); } '(' param_list ')' ':' type {
                  currentScope->add(paramSym);
              }
           } '{' func_body '}' {
+             SymbolInfo* funcSym = currentScope->parent->lookup(*$2);
+             if (funcSym) {
+                 funcSym->funcBody = *$11;
+             }
              if(currentScope->parent) currentScope = currentScope->parent;
              delete $2;
+             delete $11;
           }
         ;
 
@@ -177,7 +199,7 @@ param_decl: ID ':' type {
           }
           ;
 
-func_body: local_decls statement_list { delete $2; }
+func_body: local_decls statement_list { $$ = $2; }
          ;
 
 local_decls:
@@ -205,7 +227,8 @@ statement: assign_stmt { $$ = $1; }
          | print_stmt { $$ = $1; }
          | if_stmt { $$ = $1; }   
          | while_stmt { $$ = $1; } 
-         | call_stmt ';' { $$ = $1; }
+         | call_expr ';' { $$ = $1; }
+         | return_stmt { $$ = $1; }
          ;
 
 assign_stmt: ID ASSIGN expression ';' {
@@ -241,6 +264,12 @@ if_stmt: IF '(' expression ')' '{' statement_list '}' {
            $$ = new IfNode($3, *$6);
            delete $6;
        }
+       | IF '(' expression ')' '{' statement_list '}' ELSE '{' statement_list '}' {
+           if ($3->nodeType != TYPE_BOOL) yyerror("IF condition must be boolean");
+           // Asigura-te ca in AST.h IfNode accepta 2 vectori (then, else)
+           $$ = new IfNode($3, *$6, *$10); 
+           delete $6; delete $10;
+       }
        ;
 
 while_stmt: WHILE '(' expression ')' '{' statement_list '}' {
@@ -250,38 +279,57 @@ while_stmt: WHILE '(' expression ')' '{' statement_list '}' {
           }
           ;
 
-call_stmt: ID '(' arg_list ')' {
+return_stmt: RETURN expression ';' {
+                $$ = new ReturnNode($2);
+            }
+            ;
+
+call_expr: ID '(' arg_list ')' {
              SymbolInfo* s = currentScope->lookup(*$1);
              if (!s || s->kind != "function") yyerror("Function not defined");
              
-             if (s->paramTypes.size() != tempArgsCall.size()) yyerror("Wrong number of arguments");
-             for(size_t i=0; i<s->paramTypes.size(); i++) {
-                 if(s->paramTypes[i] != tempArgsCall[i]) yyerror("Argument type mismatch");
+             if (s->paramTypes.size() != $3->size()) yyerror("Wrong number of arguments");
+             
+             for(size_t i=0; i < $3->size(); i++) {
+                 if ((*$3)[i]->nodeType != s->paramTypes[i]) 
+                    yyerror("Argument type mismatch");
              }
 
+             $$ = new FunctionCallNode(*$1, *$3, currentScope, s->type);
              delete $1;
-             $$ = NULL;
+             delete $3; 
          }
          | ID '.' ID '(' arg_list ')' {
              SymbolInfo* obj = currentScope->lookup(*$1);
              if(!obj || obj->type != TYPE_CLASS) yyerror("Not an object");
-             delete $1; delete $3;
-             $$ = NULL;
+             
+             SymbolInfo* cls = globalScope->lookup(obj->className);
+             if(!cls) yyerror("Class definition not found");
+
+             SymbolTable* clsScope = cls->funcScopeRef;
+             if(!clsScope) yyerror("Class scope not found");
+
+             SymbolInfo* method = clsScope->lookup(*$3);
+             if(!method || method->kind != "function") yyerror("Method not found");
+
+             if (method->paramTypes.size() != $5->size()) yyerror("Wrong number of arguments in method call");
+
+             $$ = new RealMethodCallNode(*$1, *$5, method, currentScope);
+             delete $1; delete $3; 
          }
          ;
 
-arg_list: { tempArgsCall.clear(); }
-        | args_exist
+arg_list: { $$ = new vector<ASTNode*>(); }
+        | args_exist { $$ = $1; }
         ;
 
 args_exist: expression { 
-              tempArgsCall.clear(); 
-              tempArgsCall.push_back($1->nodeType); 
-              delete $1; 
+              $$ = new vector<ASTNode*>(); 
+              $$->push_back($1); 
             }
           | args_exist ',' expression {
-              tempArgsCall.push_back($3->nodeType);
-              delete $3;
+              $1->push_back($3);
+              $$ = $1;
           }
           ;
 
@@ -304,6 +352,7 @@ expression: INT_VAL { $$ = new LiteralNode($1); }
               $$ = new MemberAccessNode(*$1, *$3, currentScope, t);
               delete $1; delete $3;
           }
+          | call_expr { $$ = $1; }
           | expression '+' expression { 
               if ($1->nodeType != $3->nodeType) yyerror("Type mismatch in +");
               $$ = new BinaryNode($1, "+", $3); 
@@ -332,11 +381,27 @@ expression: INT_VAL { $$ = new LiteralNode($1); }
               if ($1->nodeType != $3->nodeType) yyerror("Type mismatch in ==");
               $$ = new BinaryNode($1, "==", $3);
           }
+          | expression AND expression {
+              if ($1->nodeType != TYPE_BOOL || $3->nodeType != TYPE_BOOL) 
+                  yyerror("Logic operator && requires boolean operands");
+              $$ = new BinaryNode($1, "&&", $3);
+          }
+          | expression OR expression {
+              if ($1->nodeType != TYPE_BOOL || $3->nodeType != TYPE_BOOL) 
+                  yyerror("Logic operator || requires boolean operands");
+              $$ = new BinaryNode($1, "||", $3);
+          }
+          | NOT expression {
+              if ($2->nodeType != TYPE_BOOL) 
+                  yyerror("Logic operator ! requires boolean operand");
+              $$ = new UnaryNode("!", $2);
+          }
           | NEW ID '(' ')' {
                if (!globalScope->lookup(*$2)) yyerror("Undefined class");
                $$ = new NewNode(*$2, globalScope);
                delete $2;
           }
+          | '(' expression ')' { $$ = $2; }
           ;
 
 type: T_INT { $$ = TYPE_INT; }

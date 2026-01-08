@@ -9,6 +9,8 @@
 
 using namespace std;
 
+class ASTNode; 
+
 enum DataType { TYPE_INT, TYPE_FLOAT, TYPE_STRING, TYPE_BOOL, TYPE_VOID, TYPE_CLASS, TYPE_UNKNOWN };
 
 inline string getTypeString(DataType t) {
@@ -35,6 +37,8 @@ struct ValueWrapper {
     ValueWrapper() : type(TYPE_UNKNOWN) {}
 };
 
+class SymbolTable; 
+
 struct SymbolInfo {
     string name;
     string kind;
@@ -42,14 +46,16 @@ struct SymbolInfo {
     string className;
     
     vector<DataType> paramTypes;
-    
+    vector<string> paramNames; 
     map<string, DataType> classMembers;
 
     ValueWrapper runtimeValue;
-    
     map<string, ValueWrapper> instanceMembers;
 
-    SymbolInfo(string n, string k, DataType t) : name(n), kind(k), type(t) {
+    vector<ASTNode*> funcBody; 
+    SymbolTable* funcScopeRef;
+
+    SymbolInfo(string n, string k, DataType t) : name(n), kind(k), type(t), funcScopeRef(NULL) {
         runtimeValue.type = t;
     }
 };
@@ -77,6 +83,7 @@ public:
     void printTable(ofstream& file) {
         file << "Scope: " << scopeName;
         if (parent) file << "  (Parent: " << parent->scopeName << ")";
+        file << endl;
         
         for (auto const& entry : symbols) {
             SymbolInfo* val = entry.second;

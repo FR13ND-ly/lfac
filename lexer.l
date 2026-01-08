@@ -19,6 +19,7 @@
 "while" { return WHILE; }
 "Print" { return PRINT; }
 "new" { return NEW; }
+"return" { return RETURN; }
 
 "int" { yylval.dataType = TYPE_INT; return T_INT; }
 "float" { yylval.dataType = TYPE_FLOAT; return T_FLOAT; }
@@ -28,6 +29,10 @@
 
 "true" { yylval.boolVal = true; return BOOL_VAL; }
 "false" { yylval.boolVal = false; return BOOL_VAL; }
+
+"&&" { return AND; }
+"||" { return OR; }
+"!"  { return NOT; }
 
 [0-9]+\.[0-9]+ { yylval.floatVal = stof(yytext); return FLOAT_VAL; }
 [0-9]+ { yylval.intVal = atoi(yytext); return INT_VAL; }
