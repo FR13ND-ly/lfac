@@ -200,11 +200,11 @@ public:
     
     ValueWrapper eval() override {
         ValueWrapper v = expr->eval();
-        if (v.type == TYPE_INT) cout << "[PRINT]: " << v.iVal << endl;
-        else if (v.type == TYPE_FLOAT) cout << "[PRINT]: " << v.fVal << endl;
-        else if (v.type == TYPE_STRING) cout << "[PRINT]: " << v.sVal << endl;
-        else if (v.type == TYPE_BOOL) cout << "[PRINT]: " << (v.bVal ? "true" : "false") << endl;
-        else if (v.type == TYPE_CLASS) cout << "[PRINT]: Object<" << v.sVal << ">" << endl;
+        if (v.type == TYPE_INT) cout << v.iVal << endl;
+        else if (v.type == TYPE_FLOAT) cout << v.fVal << endl;
+        else if (v.type == TYPE_STRING) cout << v.sVal << endl;
+        else if (v.type == TYPE_BOOL) cout << (v.bVal ? "true" : "false") << endl;
+        else if (v.type == TYPE_CLASS) cout << "Object<" << v.sVal << ">" << endl;
         return v;
     }
 };
@@ -309,13 +309,13 @@ public:
     }
 };
 
-class RealMethodCallNode : public ASTNode {
+class MethodCallNode : public ASTNode {
     string objName;
     vector<ASTNode*> args;
     SymbolInfo* methodInfo; 
     SymbolTable* currentScope;
 public:
-    RealMethodCallNode(string on, vector<ASTNode*> a, SymbolInfo* minfo, SymbolTable* scope)
+    MethodCallNode(string on, vector<ASTNode*> a, SymbolInfo* minfo, SymbolTable* scope)
         : objName(on), args(a), methodInfo(minfo), currentScope(scope) {
         nodeType = minfo->type;
     }

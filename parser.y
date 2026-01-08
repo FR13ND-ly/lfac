@@ -314,7 +314,7 @@ call_expr: ID '(' arg_list ')' {
 
              if (method->paramTypes.size() != $5->size()) yyerror("Wrong number of arguments in method call");
 
-             $$ = new RealMethodCallNode(*$1, *$5, method, currentScope);
+             $$ = new MethodCallNode(*$1, *$5, method, currentScope);
              delete $1; delete $3; 
          }
          ;
@@ -431,7 +431,6 @@ int main(int argc, char** argv) {
     }
     f.close();
 
-    cout << "Res:" << endl;
     for(ASTNode* node : mainProgramAST) {
         if(node != NULL) {
             node->eval();

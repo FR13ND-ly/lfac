@@ -43,7 +43,7 @@
     return STRING_VAL; 
 }
 
-[a-zA-Z][a-zA-Z0-9]* { 
+[a-zA-Z_][a-zA-Z0-9_]* { 
     yylval.strVal = new string(yytext); 
     return ID; 
 }

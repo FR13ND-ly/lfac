@@ -1,37 +1,108 @@
-class Robot {
-    let id : int;
-    function init(i : int) : void {
-        id = i;
+class A {
+    let x : int;
+    let y : int;
+    let z : float;
+    let zzz : int;
+
+    function init() : void {
+        x = 19; 
+        y = 90;
+        zzz = 0;
     }
-    function check(v : int) : bool {
-        if (id > v) {
-            return true;
+
+    function g(val : int) : int {
+        return zzz * 100; 
+    }
+
+    function fl(val : int) : float {
+        if(val == 20) {
+            return 10.0;
         }
-        return false;
+        return 20.0;
     }
 }
 
-function compute(a : int) : int {
-    return a * 10;
+function f(z : int, x : float, b : bool) : int {
+    if (b == true && x > 1.0) {
+        return z * 10;
+    } 
+    return z;
 }
 
-let r : Robot;
-let x : int;
-let b : bool;
+class B {
+    let b : int;
+    let bb : int;
+
+    function init() : void {
+        b = 5;
+        bb = 10; 
+    }
+
+    function g(z : int) : int {
+        return z + b;
+    }
+
+    function f_metoda(z : int) : int {
+        if(z > 4) {
+            let var_locala : int;
+            var_locala = 0;
+            return var_locala + 5;
+        }
+        return b + bb * z;
+    }
+}
+
+function bfunc(b : bool, s : string) : string {
+    if( b == true ) {
+        return s; 
+    }
+    return "bau";
+}
+
+let fx : float;
+let x_global : int;
+let z_global : int;
+let s : string;
+let ix : int;
+let b1 : bool;
+let b2 : bool;
+let obb : B; 
+let oba : A; 
+let zzz : int;
 
 main {
-    r = new Robot();
-    r.init(50);
+    zzz = 10;
+    fx = 65.0;
+    ix = 10;
+
+    Print(fx);
+    Print(f(10, 10.0, true));
+
+    fx = fx * 10.0; 
+
+    s = "test";
+    b1 = true;
+    b2 = b1;
+
+    Print(s);
+    Print(b1);
+
+    b1 = b1 && b2;
+    b1 = b1 || b2;
+
+    oba = new A();
+    oba.init();
     
-    x = compute(5);
-    b = r.check(x) && (x == 50);
+    obb = new B();
+    obb.init();
 
-    if (b == true) {
-        Print("OK");
-    }
+    oba.x = oba.g(ix);
 
-    while (x > 48) {
-        Print(x);
-        x = x - 1;
-    }
+    Print(f(ix, fx, b1));
+
+    oba.g(ix);
+    oba.zzz = 100;
+
+    fx = oba.fl(ix);
+    Print(fx);
 }
